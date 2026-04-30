@@ -1,0 +1,21 @@
+{
+  "name": "fermah-contracts",
+  "version": "1.0.0",
+  "description": "Fermah Proof Network Solidity contracts for Base Sepolia",
+  "private": true,
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "deploy:basesepolia": "npx hardhat run scripts/deploy.ts --network baseSepolia",
+    "verify": "npx hardhat verify --network baseSepolia",
+    "clean": "npx hardhat clean"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.1.0",
+    "hardhat": "^2.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.2",
+    "dotenv": "^16.4.5"
+  }
+}
