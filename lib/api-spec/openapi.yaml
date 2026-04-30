@@ -1,0 +1,338 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Fermah Proof Network API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: proofs
+    description: Proof submission and management
+  - name: stats
+    description: Network statistics
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /proofs:
+    get:
+      operationId: listProofs
+      tags: [proofs]
+      summary: List all proof submissions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, submitted, verified, failed]
+      responses:
+        "200":
+          description: List of proofs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProofListResponse"
+    post:
+      operationId: submitProof
+      tags: [proofs]
+      summary: Submit a new proof request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitProofBody"
+      responses:
+        "201":
+          description: Proof submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proof"
+
+  /proofs/{id}:
+    get:
+      operationId: getProof
+      tags: [proofs]
+      summary: Get a single proof by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Proof detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proof"
+        "404":
+          description: Not found
+
+  /proofs/{id}/status:
+    get:
+      operationId: getProofStatus
+      tags: [proofs]
+      summary: Get live status of a proof
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Proof status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProofStatus"
+
+  /stats:
+    get:
+      operationId: getNetworkStats
+      tags: [stats]
+      summary: Get overall network statistics
+      responses:
+        "200":
+          description: Network stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetworkStats"
+
+  /stats/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [stats]
+      summary: Get recent proof activity feed
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Proof:
+      type: object
+      properties:
+        id:
+          type: string
+        circuitId:
+          type: string
+        proofType:
+          type: string
+          enum: [groth16, plonk, fflonk, risc0]
+        status:
+          type: string
+          enum: [pending, submitted, verified, failed]
+        submitter:
+          type: string
+          description: Ethereum address of the submitter
+        inputHash:
+          type: string
+          description: Keccak256 hash of the private inputs (CPD privacy)
+        proofHash:
+          type: string
+          description: Hash of the generated proof
+        txHash:
+          type: string
+          nullable: true
+          description: Onchain transaction hash after verification
+        blockNumber:
+          type: integer
+          nullable: true
+        gasUsed:
+          type: string
+          nullable: true
+        fermahJobId:
+          type: string
+          nullable: true
+          description: Fermah's internal job ID
+        errorMessage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circuitId
+        - proofType
+        - status
+        - submitter
+        - inputHash
+        - createdAt
+        - updatedAt
+
+    SubmitProofBody:
+      type: object
+      properties:
+        circuitId:
+          type: string
+        proofType:
+          type: string
+          enum: [groth16, plonk, fflonk, risc0]
+        submitter:
+          type: string
+        inputHash:
+          type: string
+          description: Client-side keccak256 of private inputs
+        publicInputs:
+          type: array
+          items:
+            type: string
+          description: Public witness values (non-sensitive)
+      required:
+        - circuitId
+        - proofType
+        - submitter
+        - inputHash
+        - publicInputs
+
+    ProofListResponse:
+      type: object
+      properties:
+        proofs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Proof"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - proofs
+        - total
+        - page
+        - limit
+
+    ProofStatus:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [pending, submitted, verified, failed]
+        fermahJobId:
+          type: string
+          nullable: true
+        txHash:
+          type: string
+          nullable: true
+        blockNumber:
+          type: integer
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - status
+        - updatedAt
+
+    NetworkStats:
+      type: object
+      properties:
+        totalProofs:
+          type: integer
+        verifiedProofs:
+          type: integer
+        pendingProofs:
+          type: integer
+        failedProofs:
+          type: integer
+        totalSubmitters:
+          type: integer
+        successRate:
+          type: number
+        avgProofTime:
+          type: number
+          description: Average proof generation time in seconds
+      required:
+        - totalProofs
+        - verifiedProofs
+        - pendingProofs
+        - failedProofs
+        - totalSubmitters
+        - successRate
+        - avgProofTime
+
+    ActivityEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [submitted, verified, failed]
+        proofId:
+          type: string
+        circuitId:
+          type: string
+        submitter:
+          type: string
+        txHash:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - proofId
+        - circuitId
+        - submitter
+        - timestamp
